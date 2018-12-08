@@ -13,6 +13,20 @@ enum TASK_STATE {
 	TASK_TERMINATED
 };
 
+struct TASK {
+    int PID;
+    char Task_name[16];
+    enum TASK_STATE Task_state;
+    int Queueing_time;
+    int Time_quantum;
+    char Priority;
+    char Time;
+    int suspend_time;
+    void (*task)(void);
+    ucontext_t uc;
+    void *stack;
+};
+
 void hw_suspend(int msec_10);
 void hw_wakeup_pid(int pid);
 int hw_wakeup_taskname(char *task_name);

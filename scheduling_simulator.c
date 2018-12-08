@@ -2,6 +2,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/queue.h>
+
+
+struct TASK highQueue[50] = {0};
+struct TASK lowQueue[50] = {0};
+int distribute_pid = 0;
+size_t highP_n = 0;
+size_t lowP_n = 0;
+size_t terminate_n = 0;
 
 
 void hw_suspend(int msec_10)
@@ -40,8 +49,90 @@ char **get_input(char *input){
     return command;
 }
 
-int add(){
+void terminate(){
+    printf("terminate\n");
+}
+
+int add(char **command){
     printf("\ncommand: add\n");
+  
+    char tq = 'S';
+    char pr = 'L';
+    
+    for(size_t i = 0; command[i] != NULL; i++){
+        if(!strcmp(command[i], "-t")){
+	    if(!strcmp(command[i + 1], "L")){
+	        tq = 'L';
+	    }
+	}
+
+        if(!strcmp(command[i], "-p")){
+	    if(!strcmp(command[i + 1], "H")){
+	        pr = 'H';
+	    }
+	}
+    }
+
+    // parse TASK_NAME
+    if(!strcmp(command[1], "task1")){
+        ++distribute_pid;
+
+	if(pr == 'H'){
+	    //highQueue[highP_n] = (struct TASK) malloc(sizeof(struct TASK));
+            highQueue[highP_n].PID = distribute_pid;
+	    strcpy(highQueue[highP_n].Task_name, "task1");
+            highQueue[highP_n].Task_state = TASK_READY;
+            highQueue[highP_n].Queueing_time = 0;
+	    if(tq == 'S')
+                highQueue[highP_n].Time_quantum = 10;
+	    else
+                highQueue[highP_n].Time_quantum = 20;
+            highQueue[highP_n].Priority = 'H';
+            highQueue[highP_n].Time = tq;
+            highQueue[highP_n].suspend_time = 0;
+            highQueue[highP_n].task = task1;
+	    getcontext(&(highQueue[highP_n].uc));
+            highQueue[highP_n].stack = (void *)malloc(8192);
+            highQueue[highP_n].uc.uc_stack.ss_sp = highQueue[highP_n].stack;
+            highQueue[highP_n].uc.uc_stack.ss_size = sizeof(highQueue[highP_n].stack);
+            makecontext(&highQueue[highP_n].uc, terminate, 0);
+
+	    ++highP_n;
+	}
+	else{
+	    //lowQueue[lowP_n] = (struct TASK)malloc(sizeof(struct TASK));
+            lowQueue[lowP_n].PID = distribute_pid;
+	    strcpy(lowQueue[lowP_n].Task_name, "task1");
+            lowQueue[lowP_n].Task_state = TASK_READY;
+            lowQueue[lowP_n].Queueing_time = 0;
+	    if(tq == 'S')
+                lowQueue[lowP_n].Time_quantum = 10;
+	    else
+                lowQueue[lowP_n].Time_quantum = 20;
+            lowQueue[lowP_n].Priority = 'L';
+            lowQueue[lowP_n].Time = tq;
+            lowQueue[lowP_n].suspend_time = 0;
+            lowQueue[lowP_n].task = task1;
+	    getcontext(&(lowQueue[lowP_n].uc));
+            lowQueue[lowP_n].stack = (void *)malloc(8192);
+            lowQueue[lowP_n].uc.uc_stack.ss_sp = lowQueue[lowP_n].stack;
+            lowQueue[lowP_n].uc.uc_stack.ss_size = sizeof(lowQueue[lowP_n].stack);
+            makecontext(&lowQueue[lowP_n].uc, terminate, 0);
+
+	    ++lowP_n;
+	}
+    }
+    else if(!strcmp(command[1], "task2")){
+    }
+    else if(!strcmp(command[1], "task3")){
+    }
+    else if(!strcmp(command[1], "task4")){
+    }
+    else if(!strcmp(command[1], "task5")){
+    }
+    else if(!strcmp(command[1], "task6")){
+    }
+    else{}
     
     return 0;
 }
@@ -55,6 +146,52 @@ int remove_task(){
 int ps(){
     printf("\ncommand: ps\n");
 
+    printf("High Priority Queue:\n===========\n");
+    for(size_t i = 0; i < highP_n; i++){
+        printf("%d    %s    ", highQueue[i].PID, highQueue[i].Task_name);
+	switch(highQueue[i].Task_state){
+		case TASK_RUNNING:
+		       printf("TASK_RUNNING    ");
+		       break;
+		case TASK_WAITING:
+		       printf("TASK_WAITING    ");
+		       break;
+		case TASK_READY:
+		       printf("TASK_READY    ");
+		       break;
+		case TASK_TERMINATED:
+		       printf("TASK_TERMINATED    ");
+		       break;
+		default:
+		       printf("TASK STATE ERROR    ");
+		       break;
+	}
+        printf("%d    ", highQueue[i].Queueing_time);
+        printf("%c    %c\n", highQueue[i].Priority, highQueue[i].Time);	
+    }
+    printf("Low Priority Queue:\n===========\n");
+    for(size_t i = 0; i < lowP_n; i++){
+        printf("%d    %s    ", lowQueue[i].PID, lowQueue[i].Task_name);
+	switch(lowQueue[i].Task_state){
+		case TASK_RUNNING:
+		       printf("TASK_RUNNING    ");
+		       break;
+		case TASK_WAITING:
+		       printf("TASK_WAITING    ");
+		       break;
+		case TASK_READY:
+		       printf("TASK_READY    ");
+		       break;
+		case TASK_TERMINATED:
+		       printf("TASK_TERMINATED    ");
+		       break;
+		default:
+		       printf("TASK STATE ERROR    ");
+		       break;
+	}
+        printf("%d    ", lowQueue[i].Queueing_time);
+        printf("%c    %c\n", lowQueue[i].Priority, lowQueue[i].Time);	
+    }
     return 0;
 }
 
@@ -84,7 +221,7 @@ int shell(){
 	        break;
 	    }
 	    else if(!strcmp(command[0], "add")){
-	        add();
+	        add(command);
 	    }
 	    else if(!strcmp(command[0], "remove")){
                 remove_task();
