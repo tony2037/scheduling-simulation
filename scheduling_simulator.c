@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/queue.h>
 
 
 struct TASK highQueue[50] = {0};
@@ -11,6 +10,10 @@ int distribute_pid = 0;
 size_t highP_n = 0;
 size_t lowP_n = 0;
 size_t terminate_n = 0;
+static ucontext_t uc_shell;
+static void *stack_shell;
+static ucontext_t uc_scheduler;
+static void *stack_scheduler;
 
 
 void hw_suspend(int msec_10)
@@ -55,6 +58,10 @@ void terminate(){
 
 int add(char **command){
     printf("\ncommand: add\n");
+    if(command[1] == NULL){
+        printf("leak of argument\n");
+	return -1;
+    }
   
     char tq = 'S';
     char pr = 'L';
@@ -369,10 +376,42 @@ int add(char **command){
     return 0;
 }
 
-int remove_task(){
+int remove_task(char **command){
     printf("\ncommand: remove\n");
-
-    return 0;
+    int pid = atoi(command[1]);
+    if(!pid){
+        printf("PID ERROR\n");
+	return -2;
+    }
+    // seek in high queue
+    for(size_t i = 0; i < highP_n; i++){
+        if(highQueue[i].PID == pid){
+	    // make every entry forward
+	    for(size_t j = i + 1; j < highP_n; j++){
+	        highQueue[j - 1] = highQueue[j];
+	    }
+	    // set the last empty
+	    memset(&highQueue[highP_n - 1], 0, sizeof(struct TASK));
+	    --highP_n;
+	    return 0;
+	}
+    }
+    
+    // seek in low queue
+    for(size_t i = 0; i < lowP_n; i++){
+        if(lowQueue[i].PID == pid){
+	    // make every entry forward
+	    for(size_t j = i + 1; j < lowP_n; j++){
+	        lowQueue[j - 1] = lowQueue[j];
+	    }
+	    // set the last empty
+	    memset(&lowQueue[lowP_n - 1], 0, sizeof(struct TASK));
+	    --lowP_n;
+	    return 0;
+	}
+    }
+    
+    return -1;
 }
 
 int ps(){
@@ -438,6 +477,17 @@ int shell(){
 	char *input;
 	size_t input_size = 128;
 	size_t nchar = 0;
+
+	// construct uc_shell
+	getcontext(&uc_shell);
+	stack_shell = (void *) malloc(8192);
+	memset(stack_shell, 0, 8192);
+	 /* here dont set up uc_link cause when shell over, everything over*/
+	uc_shell.uc_stack.ss_sp = stack_shell;
+	uc_shell.uc_stack.ss_size = sizeof(stack_shell);
+	makecontext(&uc_shell, (void (*)(void)) shell, 0);
+
+	// taking std input
 	while(1){
 	    input = (char *)malloc(input_size* sizeof(char));
 	    memset(input, 0, input_size);
@@ -458,7 +508,7 @@ int shell(){
 	        add(command);
 	    }
 	    else if(!strcmp(command[0], "remove")){
-                remove_task();
+                remove_task(command);
 	    }
 	    else if(!strcmp(command[0], "ps")){
 	        ps();
