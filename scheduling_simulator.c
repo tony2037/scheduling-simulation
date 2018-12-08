@@ -123,16 +123,248 @@ int add(char **command){
 	}
     }
     else if(!strcmp(command[1], "task2")){
+        ++distribute_pid;
+
+	if(pr == 'H'){
+	    //highQueue[highP_n] = (struct TASK) malloc(sizeof(struct TASK));
+            highQueue[highP_n].PID = distribute_pid;
+	    strcpy(highQueue[highP_n].Task_name, "task2");
+            highQueue[highP_n].Task_state = TASK_READY;
+            highQueue[highP_n].Queueing_time = 0;
+	    if(tq == 'S')
+                highQueue[highP_n].Time_quantum = 10;
+	    else
+                highQueue[highP_n].Time_quantum = 20;
+            highQueue[highP_n].Priority = 'H';
+            highQueue[highP_n].Time = tq;
+            highQueue[highP_n].suspend_time = 0;
+            highQueue[highP_n].task = task2;
+	    getcontext(&(highQueue[highP_n].uc));
+            highQueue[highP_n].stack = (void *)malloc(8192);
+            highQueue[highP_n].uc.uc_stack.ss_sp = highQueue[highP_n].stack;
+            highQueue[highP_n].uc.uc_stack.ss_size = sizeof(highQueue[highP_n].stack);
+            makecontext(&highQueue[highP_n].uc, terminate, 0);
+
+	    ++highP_n;
+	}
+	else{
+	    //lowQueue[lowP_n] = (struct TASK)malloc(sizeof(struct TASK));
+            lowQueue[lowP_n].PID = distribute_pid;
+	    strcpy(lowQueue[lowP_n].Task_name, "task2");
+            lowQueue[lowP_n].Task_state = TASK_READY;
+            lowQueue[lowP_n].Queueing_time = 0;
+	    if(tq == 'S')
+                lowQueue[lowP_n].Time_quantum = 10;
+	    else
+                lowQueue[lowP_n].Time_quantum = 20;
+            lowQueue[lowP_n].Priority = 'L';
+            lowQueue[lowP_n].Time = tq;
+            lowQueue[lowP_n].suspend_time = 0;
+            lowQueue[lowP_n].task = task2;
+	    getcontext(&(lowQueue[lowP_n].uc));
+            lowQueue[lowP_n].stack = (void *)malloc(8192);
+            lowQueue[lowP_n].uc.uc_stack.ss_sp = lowQueue[lowP_n].stack;
+            lowQueue[lowP_n].uc.uc_stack.ss_size = sizeof(lowQueue[lowP_n].stack);
+            makecontext(&lowQueue[lowP_n].uc, terminate, 0);
+
+	    ++lowP_n;
+	}
     }
     else if(!strcmp(command[1], "task3")){
+        ++distribute_pid;
+
+	if(pr == 'H'){
+	    //highQueue[highP_n] = (struct TASK) malloc(sizeof(struct TASK));
+            highQueue[highP_n].PID = distribute_pid;
+	    strcpy(highQueue[highP_n].Task_name, "task3");
+            highQueue[highP_n].Task_state = TASK_READY;
+            highQueue[highP_n].Queueing_time = 0;
+	    if(tq == 'S')
+                highQueue[highP_n].Time_quantum = 10;
+	    else
+                highQueue[highP_n].Time_quantum = 20;
+            highQueue[highP_n].Priority = 'H';
+            highQueue[highP_n].Time = tq;
+            highQueue[highP_n].suspend_time = 0;
+            highQueue[highP_n].task = task3;
+	    getcontext(&(highQueue[highP_n].uc));
+            highQueue[highP_n].stack = (void *)malloc(8192);
+            highQueue[highP_n].uc.uc_stack.ss_sp = highQueue[highP_n].stack;
+            highQueue[highP_n].uc.uc_stack.ss_size = sizeof(highQueue[highP_n].stack);
+            makecontext(&highQueue[highP_n].uc, terminate, 0);
+
+	    ++highP_n;
+	}
+	else{
+	    //lowQueue[lowP_n] = (struct TASK)malloc(sizeof(struct TASK));
+            lowQueue[lowP_n].PID = distribute_pid;
+	    strcpy(lowQueue[lowP_n].Task_name, "task3");
+            lowQueue[lowP_n].Task_state = TASK_READY;
+            lowQueue[lowP_n].Queueing_time = 0;
+	    if(tq == 'S')
+                lowQueue[lowP_n].Time_quantum = 10;
+	    else
+                lowQueue[lowP_n].Time_quantum = 20;
+            lowQueue[lowP_n].Priority = 'L';
+            lowQueue[lowP_n].Time = tq;
+            lowQueue[lowP_n].suspend_time = 0;
+            lowQueue[lowP_n].task = task3;
+	    getcontext(&(lowQueue[lowP_n].uc));
+            lowQueue[lowP_n].stack = (void *)malloc(8192);
+            lowQueue[lowP_n].uc.uc_stack.ss_sp = lowQueue[lowP_n].stack;
+            lowQueue[lowP_n].uc.uc_stack.ss_size = sizeof(lowQueue[lowP_n].stack);
+            makecontext(&lowQueue[lowP_n].uc, terminate, 0);
+
+	    ++lowP_n;
+	}
     }
     else if(!strcmp(command[1], "task4")){
+        ++distribute_pid;
+
+	if(pr == 'H'){
+	    //highQueue[highP_n] = (struct TASK) malloc(sizeof(struct TASK));
+            highQueue[highP_n].PID = distribute_pid;
+	    strcpy(highQueue[highP_n].Task_name, "task4");
+            highQueue[highP_n].Task_state = TASK_READY;
+            highQueue[highP_n].Queueing_time = 0;
+	    if(tq == 'S')
+                highQueue[highP_n].Time_quantum = 10;
+	    else
+                highQueue[highP_n].Time_quantum = 20;
+            highQueue[highP_n].Priority = 'H';
+            highQueue[highP_n].Time = tq;
+            highQueue[highP_n].suspend_time = 0;
+            highQueue[highP_n].task = task4;
+	    getcontext(&(highQueue[highP_n].uc));
+            highQueue[highP_n].stack = (void *)malloc(8192);
+            highQueue[highP_n].uc.uc_stack.ss_sp = highQueue[highP_n].stack;
+            highQueue[highP_n].uc.uc_stack.ss_size = sizeof(highQueue[highP_n].stack);
+            makecontext(&highQueue[highP_n].uc, terminate, 0);
+
+	    ++highP_n;
+	}
+	else{
+	    //lowQueue[lowP_n] = (struct TASK)malloc(sizeof(struct TASK));
+            lowQueue[lowP_n].PID = distribute_pid;
+	    strcpy(lowQueue[lowP_n].Task_name, "task4");
+            lowQueue[lowP_n].Task_state = TASK_READY;
+            lowQueue[lowP_n].Queueing_time = 0;
+	    if(tq == 'S')
+                lowQueue[lowP_n].Time_quantum = 10;
+	    else
+                lowQueue[lowP_n].Time_quantum = 20;
+            lowQueue[lowP_n].Priority = 'L';
+            lowQueue[lowP_n].Time = tq;
+            lowQueue[lowP_n].suspend_time = 0;
+            lowQueue[lowP_n].task = task4;
+	    getcontext(&(lowQueue[lowP_n].uc));
+            lowQueue[lowP_n].stack = (void *)malloc(8192);
+            lowQueue[lowP_n].uc.uc_stack.ss_sp = lowQueue[lowP_n].stack;
+            lowQueue[lowP_n].uc.uc_stack.ss_size = sizeof(lowQueue[lowP_n].stack);
+            makecontext(&lowQueue[lowP_n].uc, terminate, 0);
+
+	    ++lowP_n;
+	}
     }
     else if(!strcmp(command[1], "task5")){
+        ++distribute_pid;
+
+	if(pr == 'H'){
+	    //highQueue[highP_n] = (struct TASK) malloc(sizeof(struct TASK));
+            highQueue[highP_n].PID = distribute_pid;
+	    strcpy(highQueue[highP_n].Task_name, "task5");
+            highQueue[highP_n].Task_state = TASK_READY;
+            highQueue[highP_n].Queueing_time = 0;
+	    if(tq == 'S')
+                highQueue[highP_n].Time_quantum = 10;
+	    else
+                highQueue[highP_n].Time_quantum = 20;
+            highQueue[highP_n].Priority = 'H';
+            highQueue[highP_n].Time = tq;
+            highQueue[highP_n].suspend_time = 0;
+            highQueue[highP_n].task = task5;
+	    getcontext(&(highQueue[highP_n].uc));
+            highQueue[highP_n].stack = (void *)malloc(8192);
+            highQueue[highP_n].uc.uc_stack.ss_sp = highQueue[highP_n].stack;
+            highQueue[highP_n].uc.uc_stack.ss_size = sizeof(highQueue[highP_n].stack);
+            makecontext(&highQueue[highP_n].uc, terminate, 0);
+
+	    ++highP_n;
+	}
+	else{
+	    //lowQueue[lowP_n] = (struct TASK)malloc(sizeof(struct TASK));
+            lowQueue[lowP_n].PID = distribute_pid;
+	    strcpy(lowQueue[lowP_n].Task_name, "task5");
+            lowQueue[lowP_n].Task_state = TASK_READY;
+            lowQueue[lowP_n].Queueing_time = 0;
+	    if(tq == 'S')
+                lowQueue[lowP_n].Time_quantum = 10;
+	    else
+                lowQueue[lowP_n].Time_quantum = 20;
+            lowQueue[lowP_n].Priority = 'L';
+            lowQueue[lowP_n].Time = tq;
+            lowQueue[lowP_n].suspend_time = 0;
+            lowQueue[lowP_n].task = task5;
+	    getcontext(&(lowQueue[lowP_n].uc));
+            lowQueue[lowP_n].stack = (void *)malloc(8192);
+            lowQueue[lowP_n].uc.uc_stack.ss_sp = lowQueue[lowP_n].stack;
+            lowQueue[lowP_n].uc.uc_stack.ss_size = sizeof(lowQueue[lowP_n].stack);
+            makecontext(&lowQueue[lowP_n].uc, terminate, 0);
+
+	    ++lowP_n;
+	}
     }
     else if(!strcmp(command[1], "task6")){
+        ++distribute_pid;
+
+	if(pr == 'H'){
+	    //highQueue[highP_n] = (struct TASK) malloc(sizeof(struct TASK));
+            highQueue[highP_n].PID = distribute_pid;
+	    strcpy(highQueue[highP_n].Task_name, "task6");
+            highQueue[highP_n].Task_state = TASK_READY;
+            highQueue[highP_n].Queueing_time = 0;
+	    if(tq == 'S')
+                highQueue[highP_n].Time_quantum = 10;
+	    else
+                highQueue[highP_n].Time_quantum = 20;
+            highQueue[highP_n].Priority = 'H';
+            highQueue[highP_n].Time = tq;
+            highQueue[highP_n].suspend_time = 0;
+            highQueue[highP_n].task = task6;
+	    getcontext(&(highQueue[highP_n].uc));
+            highQueue[highP_n].stack = (void *)malloc(8192);
+            highQueue[highP_n].uc.uc_stack.ss_sp = highQueue[highP_n].stack;
+            highQueue[highP_n].uc.uc_stack.ss_size = sizeof(highQueue[highP_n].stack);
+            makecontext(&highQueue[highP_n].uc, terminate, 0);
+
+	    ++highP_n;
+	}
+	else{
+	    //lowQueue[lowP_n] = (struct TASK)malloc(sizeof(struct TASK));
+            lowQueue[lowP_n].PID = distribute_pid;
+	    strcpy(lowQueue[lowP_n].Task_name, "task6");
+            lowQueue[lowP_n].Task_state = TASK_READY;
+            lowQueue[lowP_n].Queueing_time = 0;
+	    if(tq == 'S')
+                lowQueue[lowP_n].Time_quantum = 10;
+	    else
+                lowQueue[lowP_n].Time_quantum = 20;
+            lowQueue[lowP_n].Priority = 'L';
+            lowQueue[lowP_n].Time = tq;
+            lowQueue[lowP_n].suspend_time = 0;
+            lowQueue[lowP_n].task = task6;
+	    getcontext(&(lowQueue[lowP_n].uc));
+            lowQueue[lowP_n].stack = (void *)malloc(8192);
+            lowQueue[lowP_n].uc.uc_stack.ss_sp = lowQueue[lowP_n].stack;
+            lowQueue[lowP_n].uc.uc_stack.ss_size = sizeof(lowQueue[lowP_n].stack);
+            makecontext(&lowQueue[lowP_n].uc, terminate, 0);
+
+	    ++lowP_n;
+	}
     }
-    else{}
+    else{
+        printf("No such task\n");
+    }
     
     return 0;
 }
@@ -212,6 +444,8 @@ int shell(){
 	    printf(">>");
 	    if(-1 == (nchar = getline(&input, &input_size, stdin)))
                 printf("shell command error \n");
+	    if(!strcmp(input, "\n"))
+                continue;
 	    command = get_input(input);
 
 	    for(size_t i = 0; command[i] != NULL; ++i)
