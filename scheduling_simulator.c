@@ -36,6 +36,19 @@ int hw_task_create(char *task_name)
     return 0; // the pid of created task name
 }
 
+void scheduler(){
+    // construct scheduler ucontext
+    getcontext(&uc_scheduler);
+    stack_scheduler = (void *) malloc(8192);
+    memset(stack_scheduler, 0, 8192);
+    /* When there's no need to schedule, end */
+    /* no uc_link */
+    uc_scheduler.uc_stack.ss_sp = stack_scheduler;
+    uc_scheduler.uc_stack.ss_size = sizeof(stack_scheduler);
+    makecontext(&uc_scheduler, scheduler, 0);
+
+}
+
 char **get_input(char *input){
     char **command = malloc(8* sizeof(char *));
     char *separator = " \n";
