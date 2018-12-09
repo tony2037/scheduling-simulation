@@ -32,4 +32,5 @@ void hw_wakeup_pid(int pid);
 int hw_wakeup_taskname(char *task_name);
 int hw_task_create(char *task_name);
 
+int add(char **command);
 #endif

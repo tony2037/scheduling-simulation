@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
+#include <signal.h>
+#include <sys/time.h>
 
 
 struct TASK highQueue[50] = {0};
@@ -10,33 +13,199 @@ int distribute_pid = 0;
 size_t highP_n = 0;
 size_t lowP_n = 0;
 size_t terminate_n = 0;
+int is_sim = 0;
+
 static ucontext_t uc_shell;
 static void *stack_shell;
+static ucontext_t uc_simulation;
+static void *stack_simulation;
 static ucontext_t uc_scheduler;
 static void *stack_scheduler;
+static ucontext_t uc_terminate;
+static void *stack_terminate;
 
 
 void hw_suspend(int msec_10)
 {
+    if(terminate_n < highP_n){
+       // it is running high priority now
+       if(highQueue[0].Task_state == TASK_RUNNING){
+           highQueue[0].Task_state = TASK_WAITING;
+	   highQueue[0].suspend_time += msec_10* 10;
+	   // push forward
+	   struct TASK temp = highQueue[0];
+           for(size_t i = 1; i < highP_n; i++){
+	       highQueue[i - 1] = highQueue[i];
+	   }
+	   highQueue[highP_n - 1] = temp;
+	   swapcontext(&highQueue[highP_n - 1].uc, &uc_scheduler);
+       }
+       else{
+           printf("algorithm wrong\n");
+	   exit(3);
+       }
+    }
+    else{
+       // it is running low priority now
+       if(lowQueue[0].Task_state == TASK_RUNNING){
+           lowQueue[0].Task_state = TASK_WAITING;
+	   lowQueue[0].suspend_time += msec_10* 10;
+	   // push forward
+	   struct TASK temp = lowQueue[0];
+           for(size_t i = 1; i < lowP_n; i++){
+	       lowQueue[i - 1] = lowQueue[i];
+	   }
+	   lowQueue[lowP_n - 1] = temp;
+	   swapcontext(&lowQueue[highP_n - 1].uc, &uc_scheduler);
+       }
+       else{
+           printf("algorithm wrong\n");
+	   exit(3);
+       }
+    }
 	return;
 }
 
 void hw_wakeup_pid(int pid)
 {
-	return;
+    for(size_t i = 0; i < highP_n; i++){
+        if((highQueue[i].PID == pid) && (highQueue[i].Task_state == TASK_WAITING)){
+	    // find it
+	    printf("Wake up Task[%d]\n", highQueue[i].PID);
+	    highQueue[i].Task_state = TASK_READY;
+	    return;
+	}
+    }
+
+    for(size_t i = 0; i < lowP_n; i++){
+        if((lowQueue[i].PID == pid) && (lowQueue[i].Task_state == TASK_WAITING)){
+	    // find it
+	    printf("Wake up Task[%d]\n", lowQueue[i].PID);
+	    lowQueue[i].Task_state = TASK_READY;
+	    return;
+	}
+    }
+
+    printf("Did not find it\n");
+    return;
 }
 
 int hw_wakeup_taskname(char *task_name)
 {
+    for(size_t i = 0; i < highP_n; i++){
+        if((!strcmp(highQueue[i].Task_name, task_name)) && (highQueue[i].Task_state == TASK_WAITING)){
+	    // find it
+	    printf("Wake up Task[%d]\n", highQueue[i].PID);
+	    highQueue[i].Task_state = TASK_READY;
+	    return 0;
+	}
+    }
+
+    for(size_t i = 0; i < lowP_n; i++){
+        if((!strcmp(lowQueue[i].Task_name, task_name)) && (lowQueue[i].Task_state == TASK_WAITING)){
+	    // find it
+	    printf("Wake up Task[%d]\n", lowQueue[i].PID);
+	    lowQueue[i].Task_state = TASK_READY;
+	    return 0;
+	}
+    }
+
+    printf("Did not find it\n");
     return 0;
 }
 
 int hw_task_create(char *task_name)
 {
-    return 0; // the pid of created task name
+    char **command;
+    command = (char **) malloc(2* sizeof(char *));
+    command[0] = (char *) malloc(8);
+    memset(command[0], 0, 8);
+    command[1] = (char *) malloc(8);
+    memset(command[1], 0, 8);
+    strcpy(command[0], "add");
+    strcpy(command[1], task_name);
+    add(command);
+    return distribute_pid + 1; // the pid of created task name
 }
 
+
+void terminate(){
+    printf("terminate\n");
+    int through = 0;
+    //++terminate_n;
+    if(terminate_n < highP_n){
+       // it is running high priority now
+       if(highQueue[0].Task_state == TASK_RUNNING){
+           highQueue[0].Task_state = TASK_TERMINATED;
+	   // push forward
+	   struct TASK temp = highQueue[0];
+	   through = temp.Time_quantum;
+           for(size_t i = 1; i < highP_n; i++){
+	       highQueue[i - 1] = highQueue[i];
+	   }
+	   highQueue[highP_n - 1] = temp;
+       }
+       else{
+           printf("algorithm wrong\n");
+	   exit(3);
+       }
+    }
+    else{
+       // it is running low priority now
+       if(lowQueue[0].Task_state == TASK_RUNNING){
+           lowQueue[0].Task_state = TASK_TERMINATED;
+	   // push forward
+	   struct TASK temp = lowQueue[0];
+	   through = temp.Time_quantum;
+           for(size_t i = 1; i < lowP_n; i++){
+	       lowQueue[i - 1] = lowQueue[i];
+	   }
+	   lowQueue[lowP_n - 1] = temp;
+       }
+       else{
+           printf("algorithm wrong\n");
+	   exit(3);
+       }
+    }
+
+    // cut down the waiting time
+    for(size_t i = 0; i < highP_n; i++){
+        if((highQueue[i].suspend_time -= through) <= 0 && (highQueue[i].Task_state == TASK_WAITING)){
+	    highQueue[i].suspend_time = 0;
+	    highQueue[i].Task_state = TASK_READY;
+	}
+    }
+    for(size_t i = 0; i < lowP_n; i++){
+        if((lowQueue[i].suspend_time -= through) <= 0 && (lowQueue[i].Task_state == TASK_WAITING)){
+	    lowQueue[i].suspend_time = 0;
+	    lowQueue[i].Task_state = TASK_READY;
+	}
+    }
+
+    ++terminate_n;
+}
+
+
+void checkTerminate(){
+    int terminate = 0;
+    for(size_t i = 0; i < highP_n; i++){
+        if(highQueue[i].Task_state == TASK_TERMINATED)
+            ++terminate;
+    }
+
+    for(size_t i = 0; i < lowP_n; i++){
+        if(lowQueue[i].Task_state == TASK_TERMINATED)
+            ++terminate;
+    }
+
+    terminate_n = terminate;
+}
+
+
 void scheduler(){
+    // is simulating
+    is_sim = 1;
+
     // construct scheduler ucontext
     getcontext(&uc_scheduler);
     stack_scheduler = (void *) malloc(8192);
@@ -46,6 +215,85 @@ void scheduler(){
     uc_scheduler.uc_stack.ss_sp = stack_scheduler;
     uc_scheduler.uc_stack.ss_size = sizeof(stack_scheduler);
     makecontext(&uc_scheduler, scheduler, 0);
+
+    // construct terminate ucontext
+    getcontext(&uc_terminate);
+    stack_terminate = (void *) malloc(8192);
+    memset(stack_terminate, 0, 8192);
+    uc_terminate.uc_link = &uc_scheduler;
+    uc_terminate.uc_stack.ss_sp = stack_terminate;
+    uc_terminate.uc_stack.ss_size = sizeof(stack_terminate);
+    makecontext(&uc_terminate, terminate, 0);
+
+    // Double check terminate_n
+    checkTerminate();
+    
+    // if every tasks are terminated, end
+    if(terminate_n >= (highP_n + lowP_n)){
+        printf("Every tasks are terminated\n");
+	exit(0);
+    }
+
+    // if not, schedule it
+    if(terminate_n < highP_n){
+    // Do high priority queue
+        // move forward
+        while(highQueue[0].Task_state != TASK_READY){
+            struct TASK temp = highQueue[0];
+	    for(size_t i = 1; i < highP_n; i++){
+	        highQueue[i - 1] = highQueue[i];
+	    }
+	    highQueue[highP_n - 1] = temp;
+	}
+	// Do this
+	printf("Scheduler: TASK(%d) \n", highQueue[0].PID);
+	highQueue[0].Task_state = TASK_RUNNING;
+	    
+	// set timer
+	struct itimerval tick;
+	memset(&tick, 0, sizeof(tick));
+	tick.it_value.tv_sec = 0; // 0sec
+	tick.it_value.tv_usec = highQueue[0].Time_quantum; // ms 
+	tick.it_interval.tv_sec = 1;
+	tick.it_interval.tv_usec = 0;
+	int res_t = setitimer(ITIMER_VIRTUAL, &tick, NULL); // send SIGVTALRM 
+	if(res_t == -1){
+	    printf("timer error\n");
+            exit(2);
+	}
+	// context switch
+        setcontext(&highQueue[0].uc);
+        
+    }
+    else{
+    // Do low priority queue
+        // move forward
+        while(lowQueue[0].Task_state != TASK_READY){
+            struct TASK temp = lowQueue[0];
+	    for(size_t i = 1; i < lowP_n; i++){
+	        lowQueue[i - 1] = lowQueue[i];
+	    }
+	    lowQueue[lowP_n - 1] = temp;
+	}
+	// Do this
+	printf("Scheduler: TASK(%d) \n", lowQueue[0].PID);
+	lowQueue[0].Task_state = TASK_RUNNING;
+	    
+	// set timer
+	struct itimerval tick;
+	memset(&tick, 0, sizeof(tick));
+	tick.it_value.tv_sec = 0; // 0sec
+	tick.it_value.tv_usec = lowQueue[0].Time_quantum; // ms 
+	tick.it_interval.tv_sec = 1;
+	tick.it_interval.tv_usec = 0;
+	int res_t = setitimer(ITIMER_VIRTUAL, &tick, NULL); // send SIGVTALRM 
+	if(res_t == -1){
+	    printf("timer error\n");
+            exit(2);
+	}
+	// context switch
+        setcontext(&lowQueue[0].uc);
+    } 
 
 }
 
@@ -65,9 +313,6 @@ char **get_input(char *input){
     return command;
 }
 
-void terminate(){
-    printf("terminate\n");
-}
 
 int add(char **command){
     printf("\ncommand: add\n");
@@ -112,10 +357,11 @@ int add(char **command){
             highQueue[highP_n].suspend_time = 0;
             highQueue[highP_n].task = task1;
 	    getcontext(&(highQueue[highP_n].uc));
+	    highQueue[highP_n].uc.uc_link = &uc_terminate;
             highQueue[highP_n].stack = (void *)malloc(8192);
             highQueue[highP_n].uc.uc_stack.ss_sp = highQueue[highP_n].stack;
             highQueue[highP_n].uc.uc_stack.ss_size = sizeof(highQueue[highP_n].stack);
-            makecontext(&highQueue[highP_n].uc, terminate, 0);
+            makecontext(&highQueue[highP_n].uc, task1, 0);
 
 	    ++highP_n;
 	}
@@ -134,10 +380,11 @@ int add(char **command){
             lowQueue[lowP_n].suspend_time = 0;
             lowQueue[lowP_n].task = task1;
 	    getcontext(&(lowQueue[lowP_n].uc));
+	    lowQueue[lowP_n].uc.uc_link = &uc_terminate;
             lowQueue[lowP_n].stack = (void *)malloc(8192);
             lowQueue[lowP_n].uc.uc_stack.ss_sp = lowQueue[lowP_n].stack;
             lowQueue[lowP_n].uc.uc_stack.ss_size = sizeof(lowQueue[lowP_n].stack);
-            makecontext(&lowQueue[lowP_n].uc, terminate, 0);
+            makecontext(&lowQueue[lowP_n].uc, task1, 0);
 
 	    ++lowP_n;
 	}
@@ -160,10 +407,11 @@ int add(char **command){
             highQueue[highP_n].suspend_time = 0;
             highQueue[highP_n].task = task2;
 	    getcontext(&(highQueue[highP_n].uc));
+	    highQueue[highP_n].uc.uc_link = &uc_terminate;
             highQueue[highP_n].stack = (void *)malloc(8192);
             highQueue[highP_n].uc.uc_stack.ss_sp = highQueue[highP_n].stack;
             highQueue[highP_n].uc.uc_stack.ss_size = sizeof(highQueue[highP_n].stack);
-            makecontext(&highQueue[highP_n].uc, terminate, 0);
+            makecontext(&highQueue[highP_n].uc, task2, 0);
 
 	    ++highP_n;
 	}
@@ -182,10 +430,11 @@ int add(char **command){
             lowQueue[lowP_n].suspend_time = 0;
             lowQueue[lowP_n].task = task2;
 	    getcontext(&(lowQueue[lowP_n].uc));
+	    lowQueue[lowP_n].uc.uc_link = &uc_terminate;
             lowQueue[lowP_n].stack = (void *)malloc(8192);
             lowQueue[lowP_n].uc.uc_stack.ss_sp = lowQueue[lowP_n].stack;
             lowQueue[lowP_n].uc.uc_stack.ss_size = sizeof(lowQueue[lowP_n].stack);
-            makecontext(&lowQueue[lowP_n].uc, terminate, 0);
+            makecontext(&lowQueue[lowP_n].uc, task2, 0);
 
 	    ++lowP_n;
 	}
@@ -208,10 +457,11 @@ int add(char **command){
             highQueue[highP_n].suspend_time = 0;
             highQueue[highP_n].task = task3;
 	    getcontext(&(highQueue[highP_n].uc));
+	    highQueue[highP_n].uc.uc_link = &uc_terminate;
             highQueue[highP_n].stack = (void *)malloc(8192);
             highQueue[highP_n].uc.uc_stack.ss_sp = highQueue[highP_n].stack;
             highQueue[highP_n].uc.uc_stack.ss_size = sizeof(highQueue[highP_n].stack);
-            makecontext(&highQueue[highP_n].uc, terminate, 0);
+            makecontext(&highQueue[highP_n].uc, task3, 0);
 
 	    ++highP_n;
 	}
@@ -230,10 +480,11 @@ int add(char **command){
             lowQueue[lowP_n].suspend_time = 0;
             lowQueue[lowP_n].task = task3;
 	    getcontext(&(lowQueue[lowP_n].uc));
+	    lowQueue[lowP_n].uc.uc_link = &uc_terminate;
             lowQueue[lowP_n].stack = (void *)malloc(8192);
             lowQueue[lowP_n].uc.uc_stack.ss_sp = lowQueue[lowP_n].stack;
             lowQueue[lowP_n].uc.uc_stack.ss_size = sizeof(lowQueue[lowP_n].stack);
-            makecontext(&lowQueue[lowP_n].uc, terminate, 0);
+            makecontext(&lowQueue[lowP_n].uc, task3, 0);
 
 	    ++lowP_n;
 	}
@@ -256,10 +507,11 @@ int add(char **command){
             highQueue[highP_n].suspend_time = 0;
             highQueue[highP_n].task = task4;
 	    getcontext(&(highQueue[highP_n].uc));
+	    highQueue[highP_n].uc.uc_link = &uc_terminate;
             highQueue[highP_n].stack = (void *)malloc(8192);
             highQueue[highP_n].uc.uc_stack.ss_sp = highQueue[highP_n].stack;
             highQueue[highP_n].uc.uc_stack.ss_size = sizeof(highQueue[highP_n].stack);
-            makecontext(&highQueue[highP_n].uc, terminate, 0);
+            makecontext(&highQueue[highP_n].uc, task4, 0);
 
 	    ++highP_n;
 	}
@@ -278,10 +530,11 @@ int add(char **command){
             lowQueue[lowP_n].suspend_time = 0;
             lowQueue[lowP_n].task = task4;
 	    getcontext(&(lowQueue[lowP_n].uc));
+	    lowQueue[lowP_n].uc.uc_link = &uc_terminate;
             lowQueue[lowP_n].stack = (void *)malloc(8192);
             lowQueue[lowP_n].uc.uc_stack.ss_sp = lowQueue[lowP_n].stack;
             lowQueue[lowP_n].uc.uc_stack.ss_size = sizeof(lowQueue[lowP_n].stack);
-            makecontext(&lowQueue[lowP_n].uc, terminate, 0);
+            makecontext(&lowQueue[lowP_n].uc, task4, 0);
 
 	    ++lowP_n;
 	}
@@ -304,10 +557,11 @@ int add(char **command){
             highQueue[highP_n].suspend_time = 0;
             highQueue[highP_n].task = task5;
 	    getcontext(&(highQueue[highP_n].uc));
+	    highQueue[highP_n].uc.uc_link = &uc_terminate;
             highQueue[highP_n].stack = (void *)malloc(8192);
             highQueue[highP_n].uc.uc_stack.ss_sp = highQueue[highP_n].stack;
             highQueue[highP_n].uc.uc_stack.ss_size = sizeof(highQueue[highP_n].stack);
-            makecontext(&highQueue[highP_n].uc, terminate, 0);
+            makecontext(&highQueue[highP_n].uc, task5, 0);
 
 	    ++highP_n;
 	}
@@ -326,10 +580,11 @@ int add(char **command){
             lowQueue[lowP_n].suspend_time = 0;
             lowQueue[lowP_n].task = task5;
 	    getcontext(&(lowQueue[lowP_n].uc));
+	    lowQueue[lowP_n].uc.uc_link = &uc_terminate;
             lowQueue[lowP_n].stack = (void *)malloc(8192);
             lowQueue[lowP_n].uc.uc_stack.ss_sp = lowQueue[lowP_n].stack;
             lowQueue[lowP_n].uc.uc_stack.ss_size = sizeof(lowQueue[lowP_n].stack);
-            makecontext(&lowQueue[lowP_n].uc, terminate, 0);
+            makecontext(&lowQueue[lowP_n].uc, task5, 0);
 
 	    ++lowP_n;
 	}
@@ -352,10 +607,11 @@ int add(char **command){
             highQueue[highP_n].suspend_time = 0;
             highQueue[highP_n].task = task6;
 	    getcontext(&(highQueue[highP_n].uc));
+	    highQueue[highP_n].uc.uc_link = &uc_terminate;
             highQueue[highP_n].stack = (void *)malloc(8192);
             highQueue[highP_n].uc.uc_stack.ss_sp = highQueue[highP_n].stack;
             highQueue[highP_n].uc.uc_stack.ss_size = sizeof(highQueue[highP_n].stack);
-            makecontext(&highQueue[highP_n].uc, terminate, 0);
+            makecontext(&highQueue[highP_n].uc, task6, 0);
 
 	    ++highP_n;
 	}
@@ -374,10 +630,11 @@ int add(char **command){
             lowQueue[lowP_n].suspend_time = 0;
             lowQueue[lowP_n].task = task6;
 	    getcontext(&(lowQueue[lowP_n].uc));
+	    lowQueue[lowP_n].uc.uc_link = &uc_terminate;
             lowQueue[lowP_n].stack = (void *)malloc(8192);
             lowQueue[lowP_n].uc.uc_stack.ss_sp = lowQueue[lowP_n].stack;
             lowQueue[lowP_n].uc.uc_stack.ss_size = sizeof(lowQueue[lowP_n].stack);
-            makecontext(&lowQueue[lowP_n].uc, terminate, 0);
+            makecontext(&lowQueue[lowP_n].uc, task6, 0);
 
 	    ++lowP_n;
 	}
@@ -387,6 +644,7 @@ int add(char **command){
     }
     
     return 0;
+
 }
 
 int remove_task(char **command){
@@ -480,8 +738,14 @@ int ps(){
 }
 
 int start(){
-    printf("\ncommand: start\n");
-
+    printf("\nstart simulation\n");
+    sleep(1);
+    if(is_sim){
+        setcontext(&uc_simulation);
+    }
+    else{   
+        scheduler();
+    }
     return 0;
 }
 
@@ -499,6 +763,14 @@ int shell(){
 	uc_shell.uc_stack.ss_sp = stack_shell;
 	uc_shell.uc_stack.ss_size = sizeof(stack_shell);
 	makecontext(&uc_shell, (void (*)(void)) shell, 0);
+
+	// construct uc_simulation
+	getcontext(&uc_simulation);
+	stack_simulation = (void *) malloc(8192);
+	memset(stack_simulation, 0, 8192);
+	 /* here dont set up uc_simulation cause when shell over, everything over*/
+	uc_simulation.uc_stack.ss_sp = stack_simulation;
+	uc_simulation.uc_stack.ss_size = sizeof(stack_simulation);
 
 	// taking std input
 	while(1){
@@ -537,8 +809,39 @@ int shell(){
 	return 0;
 }
 
+void signalHandlerSIGVTALRM(int signum){
+    printf("Time's up\n");
+    if(terminate_n < highP_n){
+       // it is running high priority now
+       if(highQueue[0].Task_state == TASK_RUNNING){
+           swapcontext(&highQueue[0].uc, &uc_scheduler);
+       }
+       else{
+           printf("algorithm wrong\n");
+	   exit(3);
+       }
+    }
+    else{
+       // it is running low priority now
+       if(lowQueue[0].Task_state == TASK_RUNNING){
+           swapcontext(&lowQueue[0].uc, &uc_terminate); 
+       }
+       else{
+           printf("algorithm wrong\n");
+	   exit(3);
+       }
+    }
+}
+
+void signalHandlerSIGTSTP(int signum){
+    printf("\nctrl + z\n");
+    swapcontext(&uc_simulation, &uc_shell);
+}
+
 int main()
 {
+    signal(SIGTSTP, signalHandlerSIGTSTP);
+    signal(SIGVTALRM, signalHandlerSIGVTALRM);
     shell();	
     return 0;
 }
