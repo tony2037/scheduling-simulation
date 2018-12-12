@@ -217,6 +217,7 @@ void scheduler(){
     makecontext(&uc_scheduler, scheduler, 0);
 
     // construct terminate ucontext
+    memset(&uc_terminate, 0, sizeof(uc_terminate));
     getcontext(&uc_terminate);
     stack_terminate = (void *) malloc(8192);
     memset(stack_terminate, 0, 8192);
@@ -824,7 +825,7 @@ void signalHandlerSIGVTALRM(int signum){
     else{
        // it is running low priority now
        if(lowQueue[0].Task_state == TASK_RUNNING){
-           swapcontext(&lowQueue[0].uc, &uc_terminate); 
+           swapcontext(&lowQueue[0].uc, &uc_scheduler); 
        }
        else{
            printf("algorithm wrong\n");
@@ -835,6 +836,16 @@ void signalHandlerSIGVTALRM(int signum){
 
 void signalHandlerSIGTSTP(int signum){
     printf("\nctrl + z\n");
+
+    // construct simulation ucontext
+    memset(&uc_simulation, 0, sizeof(uc_simulation));
+    getcontext(&uc_simulation);
+    stack_simulation = (void *) malloc(8192);
+    memset(stack_simulation, 0, 8192);
+    uc_simulation.uc_link = &uc_terminate;  // This should no happen
+    uc_simulation.uc_stack.ss_sp = stack_simulation;
+    uc_simulation.uc_stack.ss_size = sizeof(stack_simulation);
+    
     swapcontext(&uc_simulation, &uc_shell);
 }
 
