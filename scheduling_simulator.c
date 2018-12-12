@@ -126,7 +126,7 @@ int hw_task_create(char *task_name)
     strcpy(command[0], "add");
     strcpy(command[1], task_name);
     add(command);
-    return distribute_pid + 1; // the pid of created task name
+    return distribute_pid; // the pid of created task name
 }
 
 
@@ -873,6 +873,7 @@ void signalHandlerSIGVTALRM(int signum){
     if(terminate_n < highP_n){
        // it is running high priority now
        if(highQueue[0].Task_state == TASK_RUNNING){
+	   highQueue[0].Task_state = TASK_READY;
            swapcontext(&highQueue[0].uc, &uc_scheduler);
        }
        else{
@@ -883,6 +884,7 @@ void signalHandlerSIGVTALRM(int signum){
     else{
        // it is running low priority now
        if(lowQueue[0].Task_state == TASK_RUNNING){
+	   lowQueue[0].Task_state = TASK_READY;
            swapcontext(&lowQueue[0].uc, &uc_scheduler); 
        }
        else{
