@@ -208,11 +208,11 @@ void allSuspend(char mode){
     if(mode == 'H'){
         // All tasks in highQueue are waiting
         for(size_t i = 0; i < highP_n; i++){
-	    if(highQueue[i].Task_state != TASK_WAITING){
+	    if((highQueue[i].Task_state == TASK_READY) && (highQueue[i].Task_state == TASK_RUNNING)){
 	        printf("ERROR: Not all tasks are waiting\n");
 		exit(4);
 	    }
-	    else{
+	    else if(highQueue[i].Task_state == TASK_WAITING){
 	        sp_time = (highQueue[i].suspend_time < sp_time)? highQueue[i].suspend_time: sp_time;
 	    }
 	}
@@ -220,11 +220,11 @@ void allSuspend(char mode){
     else{
 	// All tasks in lowQueue are waiting
         for(size_t i = 0; i < lowP_n; i++){
-	    if(lowQueue[i].Task_state != TASK_WAITING){
+	    if((lowQueue[i].Task_state == TASK_READY) && (lowQueue[i].Task_state == TASK_RUNNING)){
 	        printf("ERROR: Not all tasks are waiting\n");
 		exit(4);
 	    }
-	    else{
+	    else if(lowQueue[i].Task_state == TASK_WAITING){
 	        sp_time = (lowQueue[i].suspend_time < sp_time)? lowQueue[i].suspend_time: sp_time;
 	    }
 	}
@@ -874,7 +874,15 @@ void signalHandlerSIGVTALRM(int signum){
        // it is running high priority now
        if(highQueue[0].Task_state == TASK_RUNNING){
 	   highQueue[0].Task_state = TASK_READY;
-           swapcontext(&highQueue[0].uc, &uc_scheduler);
+
+	   // push forward
+	   struct TASK temp = highQueue[0];
+           for(size_t i = 1; i < highP_n; i++){
+	       highQueue[i - 1] = highQueue[i];
+	   }
+	   highQueue[highP_n - 1] = temp;
+
+           swapcontext(&highQueue[highP_n - 1].uc, &uc_scheduler);
        }
        else{
            printf("algorithm wrong\n");
@@ -885,7 +893,15 @@ void signalHandlerSIGVTALRM(int signum){
        // it is running low priority now
        if(lowQueue[0].Task_state == TASK_RUNNING){
 	   lowQueue[0].Task_state = TASK_READY;
-           swapcontext(&lowQueue[0].uc, &uc_scheduler); 
+
+	   // push forward
+	   struct TASK temp = lowQueue[0];
+           for(size_t i = 1; i < lowP_n; i++){
+	       lowQueue[i - 1] = lowQueue[i];
+	   }
+	   lowQueue[lowP_n - 1] = temp;
+
+           swapcontext(&lowQueue[lowP_n - 1].uc, &uc_scheduler); 
        }
        else{
            printf("algorithm wrong\n");
