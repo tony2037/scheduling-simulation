@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <sys/time.h>
+#include <limits.h>
 
 
 struct TASK highQueue[50] = {0};
@@ -56,7 +57,7 @@ void hw_suspend(int msec_10)
 	       lowQueue[i - 1] = lowQueue[i];
 	   }
 	   lowQueue[lowP_n - 1] = temp;
-	   swapcontext(&lowQueue[highP_n - 1].uc, &uc_scheduler);
+	   swapcontext(&lowQueue[lowP_n - 1].uc, &uc_scheduler);
        }
        else{
            printf("algorithm wrong\n");
@@ -202,6 +203,50 @@ void checkTerminate(){
 }
 
 
+void allSuspend(char mode){
+    int sp_time = INT_MAX; 
+    if(mode == 'H'){
+        // All tasks in highQueue are waiting
+        for(size_t i = 0; i < highP_n; i++){
+	    if(highQueue[i].Task_state != TASK_WAITING){
+	        printf("ERROR: Not all tasks are waiting\n");
+		exit(4);
+	    }
+	    else{
+	        sp_time = (highQueue[i].suspend_time < sp_time)? highQueue[i].suspend_time: sp_time;
+	    }
+	}
+    }
+    else{
+	// All tasks in lowQueue are waiting
+        for(size_t i = 0; i < lowP_n; i++){
+	    if(lowQueue[i].Task_state != TASK_WAITING){
+	        printf("ERROR: Not all tasks are waiting\n");
+		exit(4);
+	    }
+	    else{
+	        sp_time = (lowQueue[i].suspend_time < sp_time)? lowQueue[i].suspend_time: sp_time;
+	    }
+	}
+    }
+
+    // now we have minimum suspend time
+    for(size_t i = 0; i < highP_n; i++){
+        if((highQueue[i].suspend_time -= sp_time) <= 0 && (highQueue[i].Task_state == TASK_WAITING)){
+	    highQueue[i].suspend_time = 0;
+	    highQueue[i].Task_state = TASK_READY;
+	}
+    }
+    for(size_t i = 0; i < lowP_n; i++){
+        if((lowQueue[i].suspend_time -= sp_time) <= 0 && (lowQueue[i].Task_state == TASK_WAITING)){
+	    lowQueue[i].suspend_time = 0;
+	    lowQueue[i].Task_state = TASK_READY;
+	}
+    }
+    return;
+}
+
+
 void scheduler(){
     // is simulating
     is_sim = 1;
@@ -239,15 +284,22 @@ void scheduler(){
     if(terminate_n < highP_n){
     // Do high priority queue
         // move forward
+	int round = 0;
         while(highQueue[0].Task_state != TASK_READY){
-            struct TASK temp = highQueue[0];
+            // push forward
+	    struct TASK temp = highQueue[0];
 	    for(size_t i = 1; i < highP_n; i++){
 	        highQueue[i - 1] = highQueue[i];
 	    }
 	    highQueue[highP_n - 1] = temp;
+
+	    if((++round) == highP_n){
+	        allSuspend('H');
+		round = 0;
+	    }
 	}
 	// Do this
-	printf("Scheduler: TASK(%d) \n", highQueue[0].PID);
+	printf("Scheduler: TASK PID:(%d) \n", highQueue[0].PID);
 	highQueue[0].Task_state = TASK_RUNNING;
 	    
 	// set timer
@@ -269,15 +321,21 @@ void scheduler(){
     else{
     // Do low priority queue
         // move forward
+	int round = 0;
         while(lowQueue[0].Task_state != TASK_READY){
             struct TASK temp = lowQueue[0];
 	    for(size_t i = 1; i < lowP_n; i++){
 	        lowQueue[i - 1] = lowQueue[i];
 	    }
 	    lowQueue[lowP_n - 1] = temp;
+	    
+	    if((++round) == lowP_n){
+	        allSuspend('L');
+		round = 0;
+	    }
 	}
 	// Do this
-	printf("Scheduler: TASK(%d) \n", lowQueue[0].PID);
+	printf("Scheduler: TASK PID:(%d) \n", lowQueue[0].PID);
 	lowQueue[0].Task_state = TASK_RUNNING;
 	    
 	// set timer
