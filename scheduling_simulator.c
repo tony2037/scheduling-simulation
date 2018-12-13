@@ -820,16 +820,16 @@ int shell(){
 	memset(stack_shell, 0, 8192);
 	 /* here dont set up uc_link cause when shell over, everything over*/
 	uc_shell.uc_stack.ss_sp = stack_shell;
-	uc_shell.uc_stack.ss_size = sizeof(stack_shell);
+	uc_shell.uc_stack.ss_size = 8192;
 	makecontext(&uc_shell, (void (*)(void)) shell, 0);
 
 	// construct uc_simulation
-	getcontext(&uc_simulation);
-	stack_simulation = (void *) malloc(8192);
-	memset(stack_simulation, 0, 8192);
+	//getcontext(&uc_simulation);
+	//stack_simulation = (void *) malloc(8192);
+	//memset(stack_simulation, 0, 8192);
 	 /* here dont set up uc_simulation cause when shell over, everything over*/
-	uc_simulation.uc_stack.ss_sp = stack_simulation;
-	uc_simulation.uc_stack.ss_size = sizeof(stack_simulation);
+	//uc_simulation.uc_stack.ss_sp = stack_simulation;
+	//uc_simulation.uc_stack.ss_size = sizeof(stack_simulation);
 
 	// taking std input
 	while(1){
@@ -913,14 +913,37 @@ void signalHandlerSIGVTALRM(int signum){
 void signalHandlerSIGTSTP(int signum){
     printf("\nctrl + z\n");
 
+    /*
+    // make state TASK_READY
+    if(terminate_n < highP_n){
+       // it is running high priority now
+       if(highQueue[0].Task_state == TASK_RUNNING){
+           highQueue[0].Task_state = TASK_READY;
+       }
+       else{
+           printf("algorithm wrong\n");
+	   exit(3);
+       }
+    }
+    else{
+       // it is running low priority now
+       if(lowQueue[0].Task_state == TASK_RUNNING){
+	   lowQueue[0].Task_state = TASK_READY;
+       }
+       else{
+           printf("algorithm wrong\n");
+	   exit(3);
+       }
+    }
+    */
+
     // construct simulation ucontext
-    memset(&uc_simulation, 0, sizeof(uc_simulation));
     getcontext(&uc_simulation);
-    stack_simulation = (void *) malloc(8192);
-    memset(stack_simulation, 0, 8192);
-    uc_simulation.uc_link = &uc_terminate;  // This should no happen
-    uc_simulation.uc_stack.ss_sp = stack_simulation;
-    uc_simulation.uc_stack.ss_size = sizeof(stack_simulation);
+    //stack_simulation = (void *) malloc(8192);
+    //memset(stack_simulation, 0, 8192);
+    //uc_simulation.uc_link = &uc_terminate;  // This should no happen
+    //uc_simulation.uc_stack.ss_sp = stack_simulation;
+    //uc_simulation.uc_stack.ss_size = sizeof(stack_simulation);
     
     swapcontext(&uc_simulation, &uc_shell);
 }

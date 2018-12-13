@@ -1,6 +1,6 @@
 TARGETS = scheduling_simulator
 CC = gcc
-CFLAGS += -std=gnu99 -Wall -g
+CFLAGS += -std=gnu99 -Wall -O0 -g
 OBJS = scheduling_simulator.o task.o
 
 all:$(TARGETS)
